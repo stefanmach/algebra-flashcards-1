@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Mastery - Structure & Logic</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .flip-card {
+            perspective: 1000px;
+        }
+        .flip-card-inner {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        .flip-card-front, .flip-card-back {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+        .safe-area-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade { animation: fade-in 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
+
+    <!-- Navigation -->
+    <nav class="bg-indigo-600 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="font-bold text-lg">Math Mastery</h1>
+            <div class="flex gap-4">
+                <button onclick="app.setView('study')" class="hover:text-indigo-200 transition">Study</button>
+                <button onclick="app.setView('test')" class="hover:text-indigo-200 transition">Test</button>
+                <button onclick="app.resetProgress()" class="text-xs bg-indigo-700 px-2 py-1 rounded">Reset</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="app-container" class="flex-grow max-w-md mx-auto w-full p-4 overflow-x-hidden">
+        <!-- Views will be injected here -->
+    </main>
+
+    <!-- App Logic -->
+    <script>
+        const flashcardData = [
+            { term: "Fraction", definition: "A fraction N / D represents N divided by D.", question: "What operation does a fraction represent?", choices: ["Addition", "Multiplication", "Division", "Subtraction"], correctAnswer: "C" },
+            { term: "Division as Inverse", definition: "Division undoes multiplication.", question: "Why does (ab)/a simplify to b (a ≠ 0)?", choices: ["Distribution", "Inverse relationship", "Cancellation of addition", "Commutativity"], correctAnswer: "B" },
+            { term: "Domain of Validity", definition: "An expression N / D is undefined when D = 0.", question: "When is a rational expression undefined?", choices: ["When numerator equals zero", "When denominator equals zero", "When subtraction appears", "When variables are squared"], correctAnswer: "B" },
+            { term: "Top-Level Operation", definition: "The outermost operation of an expression determines what algebraic transformations are valid.", question: "What is the top-level operation of (x + 2)/3?", choices: ["Addition", "Multiplication", "Division", "Subtraction"], correctAnswer: "C" },
+            { term: "Structural Hierarchy", definition: "The highest-level operation determines legal algebraic manipulation.", question: "What determines whether division can remove a number from an expression?", choices: ["Whether the number appears anywhere", "Whether the number multiplies the entire top-level structure", "Whether subtraction is present", "Whether the expression contains parentheses"], correctAnswer: "B" },
+            { term: "Additive Structure", definition: "An expression whose top-level operation is addition or subtraction.", question: "What is the top-level operation of 3x − 4?", choices: ["Multiplication", "Subtraction", "Division", "Exponentiation"], correctAnswer: "B" },
+            { term: "Multiplicative Structure", definition: "An expression whose top-level operation is multiplication.", question: "What is the top-level operation of 3(x − 4)?", choices: ["Subtraction", "Addition", "Multiplication", "Division"], correctAnswer: "C" },
+            { term: "Structural Comparison", definition: "Two expressions are structurally different if their top-level operations differ.", question: "Which has additive top-level structure?", choices: ["4(x − 1)", "(x + 3)/2", "4x − 1", "x(4 − 1)"], correctAnswer: "C" },
+            { term: "Nested Structure", definition: "Parentheses change structural hierarchy and determine which operations occur first.", question: "What is the top-level operation of (x + 3)(x − 2)?", choices: ["Addition", "Multiplication", "Subtraction", "Division"], correctAnswer: "B" },
+            { term: "Scaling", definition: "Multiplication by a scalar that changes magnitude but preserves structure.", question: "In 5(x + 1), what is scaled?", choices: ["Only x", "Only 1", "Entire quantity (x + 1)", "Nothing"], correctAnswer: "C" },
+            { term: "Whole-Expression Scaling", definition: "A scalar must multiply the entire structure to be removable by division.", question: "Which allows full removal of 4?", choices: ["4x + 2", "4(x + 2)", "x + 4", "x(4 + 2)"], correctAnswer: "B" },
+            { term: "Partial Scaling", definition: "Scaling applied to only part of an additive structure.", question: "In 5x + 1, what does 5 represent?", choices: ["Whole scaling", "Partial scaling", "Cancellation", "Division"], correctAnswer: "B" },
+            { term: "Scaling Detection", definition: "A scalar multiplies the entire top-level structure when placed outside parentheses.", question: "In 7(x − 5), what is the scalar?", choices: ["x", "-5", "7", "(x - 5)"], correctAnswer: "C" },
+            { term: "Scaling and Negative Factors", definition: "A negative scalar both scales and reflects an expression.", question: "In −3(x − 2), what effect does −3 have?", choices: ["Only scaling", "Only reflection", "Scaling and reflection", "No effect"], correctAnswer: "C" },
+            { term: "Whole vs Partial Scaling Recognition", definition: "Only whole-expression scaling can be undone by division.", question: "Which expression allows removal of 5 by dividing the entire expression by 5?", choices: ["5x − 2", "5(x − 2)", "x − 5 + 2", "(x − 2)/5"], correctAnswer: "B" },
+            { term: "Addition Builds Structure", definition: "Addition combines terms into a structure that cannot be selectively canceled.", question: "Which operation builds structure that cannot be selectively canceled?", choices: ["Multiplication", "Division", "Addition", "Factoring"], correctAnswer: "C" },
+            { term: "Structural Recognition Under Distribution", definition: "Distribution can hide additive structure inside expressions.", question: "What is the top-level operation of 2x + 2?", choices: ["Multiplication", "Addition", "Division", "Exponentiation"], correctAnswer: "B" },
+            { term: "Distribution Rule", definition: "(A + B)/C = A/C + B/C when dividing by a single denominator.", question: "Which identity is valid?", choices: ["A/(B + C) = A/B + A/C", "(A + B)/C = A/C + B/C", "(A − B)/C = A/B − C", "A/B + C = A/(B + C)"], correctAnswer: "B" },
+            { term: "Distribution vs Factoring", definition: "Distribution expands multiplicative structure into additive structure; factoring reverses the process.", question: "Which is the distributed form of 2(x + 5)?", choices: ["2x + 5", "2x + 10", "x + 10", "2x + 7"], correctAnswer: "B" },
+            { term: "Distribution Creates Additive Structure", definition: "Distributing multiplication over addition converts multiplicative structure into additive structure.", question: "After distributing 2(x + 3), what is the top-level operation?", choices: ["Multiplication", "Addition", "Division", "Exponentiation"], correctAnswer: "B" },
+            { term: "Factoring", definition: "Rewriting additive structure as multiplicative structure.", question: "Why factor before canceling in rational expressions?", choices: ["To reduce constants", "To expose multiplicative structure", "To remove subtraction", "To change value"], correctAnswer: "B" },
+            { term: "Common Factor", definition: "A factor that multiplies every top-level term completely.", question: "Why is x not a common factor of x² + x + 1?", choices: ["x appears twice", "1 contains no x", "x² is too large", "Addition prevents factoring"], correctAnswer: "B" },
+            { term: "Structural Barrier", definition: "A constant term without a variable prevents that variable from being a common factor.", question: "Why can x not be factored from x² + x + 4?", choices: ["x² is too large", "4 contains no x", "Addition blocks factoring", "4 is prime"], correctAnswer: "B" },
+            { term: "Factoring — Numerical Factor", definition: "A numerical factor is common if it divides every top-level term.", question: "What is the greatest common factor of 6x + 8?", choices: ["2", "3", "x", "6"], correctAnswer: "A" },
+            { term: "Factoring — Variable Factor", definition: "A variable factor must appear in every top-level term.", question: "What is the largest common variable factor of 6x² + 8x?", choices: ["x²", "x", "2x", "None"], correctAnswer: "B" },
+            { term: "Greatest Common Factor", definition: "The largest factor that divides every top-level term.", question: "What is the greatest common factor of 6x² + 12x?", choices: ["2x", "6x", "3x", "x²"], correctAnswer: "B" },
+            { term: "Maximum Common Factor Selection", definition: "Extracting the greatest common factor fully exposes multiplicative structure.", question: "What is the greatest common factor of 8x + 12?", choices: ["2", "4", "x", "8"], correctAnswer: "B" },
+            { term: "Factoring — Staged Extraction", definition: "A common factor may be extracted in stages if it multiplies every term.", question: "Which is a valid first step in factoring 6x² + 12x?", choices: ["Pull out x²", "Pull out 6", "Pull out 2", "Pull out x only"], correctAnswer: "C" },
+            { term: "Factoring Variable from Two Terms", definition: "A variable may be factored if it appears in every top-level term.", question: "Factor x² + 4x.", choices: ["x(x + 4)", "x²(x + 4)", "4x(x + 1)", "(x + 2)²"], correctAnswer: "A" },
+            { term: "Distribution vs Factoring Reversal", definition: "Factoring reverses distribution by extracting common multiplicative structure.", question: "Which expression factors to 3(x + 2)?", choices: ["3x + 2", "3x + 6", "x + 6", "6x + 2"], correctAnswer: "B" },
+            { term: "Difference of Squares", definition: "A² − B² = (A − B)(A + B).", question: "Factor x² − 9.", choices: ["(x − 3)²", "(x − 9)(x + 1)", "(x − 3)(x + 3)", "(x − 1)(x − 9)"], correctAnswer: "C" },
+            { term: "Perfect Square Trinomial", definition: "A² ± 2AB + B² = (A ± B)².", question: "Factor x² + 6x + 9.", choices: ["(x + 3)²", "(x + 9)(x − 1)", "(x + 6)(x + 3)", "(x − 3)²"], correctAnswer: "A" },
+            { term: "Perfect Square Denominator", definition: "A² − 2AB + B² factors as (A − B)².", question: "Factor x² − 4x + 4.", choices: ["(x − 4)²", "(x − 2)²", "(x + 2)²", "(x − 2)(x + 2)"], correctAnswer: "B" },
+            { term: "Recognizing Hidden Difference of Squares", definition: "A² − B² may appear embedded inside larger expressions.", question: "Which expression can be factored using difference of squares?", choices: ["x² + 4", "x² − 4", "x² + 2x + 4", "x² − 2x + 4"], correctAnswer: "B" },
+            { term: "Difference of Squares with Variables", definition: "A² − B² applies even when A and B are expressions.", question: "Factor x² − 4y².", choices: ["(x − 2y)(x + 2y)", "(x − y)²", "(x + y)²", "(x − 4y)(x + y)"], correctAnswer: "A" },
+            { term: "Expanded Structural Recognition", definition: "Expanded form may hide factorable patterns.", question: "Which expression is a difference of squares?", choices: ["x² + 2x + 1", "x² − 4y²", "x² + y²", "x² − 2x + 1"], correctAnswer: "B" },
+            { term: "Recognizing Need to Factor", definition: "Additive structure must be converted to multiplicative form before cancellation.", question: "Why can't x be canceled directly from (x + 3)/x?", choices: ["x is prime", "x does not multiply the entire numerator", "Division fails", "3 blocks simplification"], correctAnswer: "B" },
+            { term: "Recognizing Irreducible Expressions", definition: "If numerator and denominator share no multiplicative factors, no reduction is possible.", question: "Simplify (x + 5)/(x + 2).", choices: ["1", "x", "Cannot reduce", "5/2"], correctAnswer: "C" },
+            { term: "Recognition of Non-Factorable Sum", definition: "If no common multiplicative factor exists, an additive expression cannot be reduced.", question: "Simplify (x + 4)/(x + 5).", choices: ["1", "x", "Cannot reduce", "4/5"], correctAnswer: "C" },
+            { term: "Cancellation Law", definition: "A factor may cancel only if it multiplies the entire numerator and the entire denominator.", question: "When is cancellation valid in a rational expression?", choices: ["When factors look similar", "When a factor multiplies the entire numerator and denominator", "When subtraction appears", "Always"], correctAnswer: "B" },
+            { term: "Structural Test Before Cancellation", definition: "A factor must multiply the entire numerator to be cancelable.", question: "Why is x not removable from (x + 2)/x?", choices: ["Because x equals 2", "Because x is not a full multiplicative factor of the numerator", "Because addition distributes", "Because denominators block cancellation"], correctAnswer: "B" },
+            { term: "Embedded Factor", definition: "A factor inside one branch of an additive structure cannot be removed globally.", question: "Why can 3 not be removed from 3x + 5?", choices: ["3 is not prime", "5 does not contain factor 3", "x blocks removal", "Division is illegal"], correctAnswer: "B" },
+            { term: "Additive Barrier in Denominator", definition: "Cancellation cannot occur across addition in the denominator.", question: "Why is x/(x + 4) not equal to 1?", choices: ["x is prime", "The denominator is an additive structure", "4 blocks subtraction", "Division is incomplete"], correctAnswer: "B" },
+            { term: "Additive Barrier", definition: "Addition at the top level prevents selective cancellation of terms.", question: "What is wrong with simplifying (x − 3 + 3)/x to 1?", choices: ["x cancels incorrectly", "Terms were canceled instead of factors", "Addition dominates multiplication", "Domain violated"], correctAnswer: "B" },
+            { term: "Embedded Additive Structure", definition: "A factor cannot be canceled if it is only part of an additive expression.", question: "Why is (2x + 4)/2 not equal to x + 4?", choices: ["2 cannot divide 2x", "4 must also divide properly", "Addition blocks cancellation without proper distribution", "x disappears"], correctAnswer: "C" },
+            { term: "Proper Distribution Before Simplification", definition: "Division across addition requires dividing every term completely.", question: "Simplify (2x + 4)/2 correctly.", choices: ["x + 4", "x + 2", "2x + 2", "x + 2, 2 ≠ 0"], correctAnswer: "B" },
+            { term: "Factoring to Enable Cancellation", definition: "Factoring exposes multiplicative structure necessary for reduction.", question: "Why can 2 be canceled in (6x + 8)/2?", choices: ["It looks similar", "Factor 2 from the numerator first", "2 is prime", "Always removable"], correctAnswer: "B" },
+            { term: "Cancellation After Factoring", definition: "Cancellation is valid only after multiplicative structure is exposed.", question: "Simplify (x² + 4x)/x.", choices: ["x² + 4", "x + 4", "x", "x + 4, x ≠ 0"], correctAnswer: "D" },
+            { term: "Structural Recognition in Nested Products", definition: "Products must be fully factored before cancellation.", question: "Simplify (x(x − 3))/(x − 3).", choices: ["x", "x − 3", "1", "x, x ≠ 3"], correctAnswer: "D" },
+            { term: "Domain After Cancellation", definition: "If a factor (x − a) is canceled, x ≠ a must still be stated.", question: "Simplify (x² − 4)/(x − 2). What must be included?", choices: ["x = 2", "x ≠ 2", "x > 2", "No restriction"], correctAnswer: "B" },
+            { term: "Domain Restriction from Variable Cancellation", definition: "Canceling a variable requires excluding the value that makes the denominator zero.", question: "After simplifying (x² − x)/x, what must be stated?", choices: ["x = 0", "x ≠ 0", "No restriction", "x ≠ 1"], correctAnswer: "B" },
+            { term: "Compound Domain Restriction", definition: "Every denominator factor produces a domain restriction.", question: "For (x² − 4)/(x² − 2x), which values must be excluded?", choices: ["x = 2", "x = 0", "x = 0 and x = 2", "No restriction"], correctAnswer: "C" },
+            { term: "Domain from Nested Cancellation", definition: "Canceling a factor requires excluding the value that makes that factor zero.", question: "In simplifying (x(x − 3))/(x − 3), what must be excluded?", choices: ["x = 0", "x = 3", "x = -3", "No restriction"], correctAnswer: "B" },
+            { term: "Structural Equality", definition: "Simplified expressions remain equal only within the original domain.", question: "Why is (x² − 1)/(x − 1) not equal to x + 1 for all x?", choices: ["Factoring changes value", "x = 1 is excluded", "Addition differs", "Multiplication missing"], correctAnswer: "B" },
+            { term: "Structural Equality Awareness", definition: "Simplified forms preserve equivalence only on the valid domain.", question: "Why must x ≠ 1 be stated when simplifying (x² − 1)/(x − 1)?", choices: ["Factoring changes value", "The denominator becomes zero at x = 1", "Subtraction dominates", "Scaling fails"], correctAnswer: "B" },
+            { term: "Illegal Cancellation", definition: "Cancellation cannot remove part of an additive structure.", question: "What is wrong with simplifying (6x + 9)/3 to 6x + 3?", choices: ["6x cannot divide by 3", "3 must divide both terms properly", "Division was applied incorrectly in the result", "Subtraction missing"], correctAnswer: "C" },
+            { term: "Error Diagnosis — Additive Trap", definition: "Visual similarity does not justify cancellation when addition is present.", question: "Why is (x + 2)/x not equal to 2?", choices: ["Division fails", "x is not a factor of the entire numerator", "2 dominates", "Addition disappears"], correctAnswer: "B" },
+            { term: "Error Diagnosis — Partial Scaling Confusion", definition: "Removing a number from only part of an additive structure changes the value.", question: "What is wrong with dividing 3x − 6 by 3 to get x − 6?", choices: ["6 must also be divided", "Subtraction is illegal", "Only 3x was divided correctly", "x disappears"], correctAnswer: "A" },
+            { term: "Error Diagnosis — Denominator Sum", definition: "Division does not distribute across addition in the denominator.", question: "Why is x/(x + 2) not equal to 1/(1 + 2)?", choices: ["x cancels", "The denominator is additive structure", "2 is constant", "Fractions are illegal"], correctAnswer: "B" },
+            { term: "Error Diagnosis — Premature Cancellation", definition: "Cancellation before factoring additive structure is illegal.", question: "What is wrong with simplifying (x² − x)/x to x²?", choices: ["Division by zero", "x² does not divide evenly", "The numerator must be factored first", "Subtraction disappears"], correctAnswer: "C" },
+            { term: "Error Diagnosis — Cancelling Terms Instead of Factors", definition: "Only multiplicative factors may cancel, not additive terms.", question: "Why is canceling x from (x + 5)/x incorrect?", choices: ["x equals zero", "x is not a multiplicative factor of the numerator", "5 prevents division", "Addition disappears"], correctAnswer: "B" },
+            { term: "Structural Trap — Visual Similarity", definition: "Expressions that look similar may still have different structures.", question: "Why is (x² + 3x)/x not equal to x² + 3?", choices: ["x is prime", "The numerator must be factored first", "Division blocks addition", "3 disappears"], correctAnswer: "B" },
+            { term: "Error Diagnosis — Canceling Across Subtraction", definition: "Subtraction prevents selective cancellation of terms.", question: "What is wrong with simplifying (x − 2)/x to 1 − 2?", choices: ["Distribution applied incorrectly", "Terms were canceled instead of factors", "x equals 2", "Subtraction disappears"], correctAnswer: "B" },
+            { term: "Multi-Step Error Diagnosis", definition: "Errors occur when factorization is skipped before simplification.", question: "What is wrong with simplifying (x² − 4)/(x − 2) to x² − 2?", choices: ["Incorrect distribution", "The numerator must be factored first", "Subtraction illegal", "Exponents block cancellation"], correctAnswer: "B" },
+            { term: "Factoring Before Reduction", definition: "Proper reduction requires converting additive structure into multiplicative structure.", question: "Simplify (x² − x)/x correctly.", choices: ["x²", "x − 1", "x", "x² − 1"], correctAnswer: "B" },
+            { term: "Multi-Step Rational Simplification", definition: "Rational simplification may require factoring both numerator and denominator.", question: "Simplify (x² − 4)/(x² − 2x).", choices: ["(x − 2)/x", "(x + 2)/x", "(x + 2)/(x − 2)", "x/(x − 2)"], correctAnswer: "B" },
+            { term: "Multi-Step Structural Simplification", definition: "Proper simplification requires identifying common factors in both numerator and denominator.", question: "Simplify (x² − 25)/(x² − 5x).", choices: ["(x − 5)/x", "(x + 5)/x", "(x + 5)/(x − 5)", "(x − 5)/(x − 1)"], correctAnswer: "B" },
+            { term: "Integrated Simplification with Multiple Factors", definition: "Rational simplification may require several factorizations before cancellation.", question: "Simplify (x² − 9)/(x² − x − 6).", choices: ["(x + 3)/(x − 3)", "(x − 3)/(x + 2)", "(x + 3)/(x − 3), x ≠ 3", "(x + 3)/(x − 3), x ≠ 3 and x ≠ -2"], correctAnswer: "D" },
+            { term: "Factoring Quadratic Denominator", definition: "Quadratic denominators must be factored before cancellation.", question: "Factor x² − x − 6.", choices: ["(x − 3)(x + 2)", "(x + 3)(x − 2)", "(x − 6)(x + 1)", "(x + 6)(x − 1)"], correctAnswer: "A" },
+            { term: "Integrated Domain Tracking", definition: "All original denominator factors determine domain restrictions even if canceled.", question: "In simplifying (x² − 9)/(x² − x − 6), which values must be excluded?", choices: ["x = 3 only", "x = -3 only", "x = 3 and x = -2", "No restriction"], correctAnswer: "C" },
+            { term: "Proper Simplification After Factoring", definition: "After factoring and canceling, domain restrictions must remain.", question: "Simplify (x² − 4)/(x − 2).", choices: ["x − 2", "x + 2", "x + 2, x ≠ 2", "x − 2, x ≠ -2"], correctAnswer: "C" },
+            { term: "Factoring Difference of Squares for Cancellation", definition: "Difference of squares must be factored before cancellation.", question: "Simplify (x² − 1)/(x − 1).", choices: ["x − 1", "x + 1", "x + 1, x ≠ 1", "x − 1, x ≠ -1"], correctAnswer: "C" },
+            { term: "Structural Workflow Mastery", definition: "Correct rational simplification follows the process: factor → cancel → state domain.", question: "What is the correct first step in simplifying (x² − x)/(x² − x)?", choices: ["Cancel immediately", "Expand both expressions", "Factor numerator and denominator", "Divide by x"], correctAnswer: "C" },
+            { term: "Full Integration — Structure, Scaling, Domain", definition: "Legal simplification requires identifying multiplicative structure, canceling only full factors, and preserving domain restrictions.", question: "Simplify (x² − x)/x.", choices: ["x²", "x − 1", "x − 1, x ≠ 0", "x, x ≠ 1"], correctAnswer: "C" }
+        ];
+
+        class MathApp {
+            constructor() {
+                this.container = document.getElementById('app-container');
+                this.mastered = JSON.parse(localStorage.getItem('math_mastered') || '[]');
+                this.currentMode = 'study';
+                this.studyIndex = 0;
+                this.testData = [];
+                this.testIndex = 0;
+                this.testScore = 0;
+                this.testResults = [];
+                this.isFlipped = false;
+                this.setView('study');
+            }
+
+            setView(mode) {
+                this.currentMode = mode;
+                this.isFlipped = false;
+                if (mode === 'study') {
+                    this.renderStudy();
+                } else if (mode === 'test') {
+                    this.startTest();
+                }
+            }
+
+            // --- STUDY MODE ---
+
+            renderStudy() {
+                const card = flashcardData[this.studyIndex];
+                const isMastered = this.mastered.includes(this.studyIndex);
+                
+                this.container.innerHTML = `
+                    <div class="flex flex-col gap-6 animate-fade">
+                        <div class="flex justify-between items-center text-sm font-semibold text-slate-500">
+                            <span>Card ${this.studyIndex + 1} of ${flashcardData.length}</span>
+                            <span>${this.mastered.length} Mastered</span>
+                        </div>
+
+                        <div id="flashcard" class="flip-card w-full h-80 ${this.isFlipped ? 'flipped' : ''}" onclick="app.toggleFlip()">
+                            <div class="flip-card-inner relative w-full h-full text-center">
+                                <div class="flip-card-front absolute inset-0 bg-white border-2 border-slate-200 rounded-3xl shadow-sm flex flex-col items-center justify-center p-8">
+                                    <h2 class="text-3xl font-bold text-indigo-600 mb-4">${card.term}</h2>
+                                    <p class="text-slate-400 text-sm">Tap to reveal definition</p>
+                                </div>
+                                <div class="flip-card-back absolute inset-0 bg-indigo-50 border-2 border-indigo-200 rounded-3xl shadow-sm flex flex-col items-center justify-center p-8">
+                                    <p class="text-xl font-medium text-slate-800 leading-relaxed">${card.definition}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <button onclick="app.prevCard()" class="bg-white border border-slate-200 py-4 rounded-2xl font-semibold shadow-sm active:bg-slate-100 transition">Previous</button>
+                            <button onclick="app.nextCard()" class="bg-indigo-600 text-white py-4 rounded-2xl font-semibold shadow-md active:bg-indigo-700 transition">Next Card</button>
+                        </div>
+
+                        <div class="flex flex-col gap-3">
+                            <button onclick="app.toggleMastery(${this.studyIndex})" class="w-full py-4 rounded-2xl font-semibold transition flex items-center justify-center gap-2 ${isMastered ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-700'}">
+                                ${isMastered ? '✓ Mastered' : 'Mark as Mastered'}
+                            </button>
+                            <button onclick="app.shuffleCards()" class="w-full py-3 text-slate-500 text-sm underline">Shuffle Deck</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            toggleFlip() {
+                this.isFlipped = !this.isFlipped;
+                document.getElementById('flashcard').classList.toggle('flipped');
+            }
+
+            nextCard() {
+                this.studyIndex = (this.studyIndex + 1) % flashcardData.length;
+                this.isFlipped = false;
+                this.renderStudy();
+            }
+
+            prevCard() {
+                this.studyIndex = (this.studyIndex - 1 + flashcardData.length) % flashcardData.length;
+                this.isFlipped = false;
+                this.renderStudy();
+            }
+
+            shuffleCards() {
+                for (let i = flashcardData.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [flashcardData[i], flashcardData[j]] = [flashcardData[j], flashcardData[i]];
+                }
+                this.studyIndex = 0;
+                this.renderStudy();
+            }
+
+            toggleMastery(idx) {
+                const item = this.mastered.indexOf(idx);
+                if (item > -1) this.mastered.splice(item, 1);
+                else this.mastered.push(idx);
+                localStorage.setItem('math_mastered', JSON.stringify(this.mastered));
+                this.renderStudy();
+            }
+
+            // --- TEST MODE ---
+
+            startTest() {
+                this.testData = [...flashcardData].sort(() => Math.random() - 0.5);
+                this.testIndex = 0;
+                this.testScore = 0;
+                this.testResults = [];
+                this.renderTestQuestion();
+            }
+
+            renderTestQuestion() {
+                const question = this.testData[this.testIndex];
+                
+                this.container.innerHTML = `
+                    <div class="flex flex-col gap-6 animate-fade">
+                        <div class="flex justify-between items-center text-sm font-semibold text-slate-500">
+                            <span>Question ${this.testIndex + 1} of ${this.testData.length}</span>
+                            <span>Score: ${this.testScore}</span>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-3xl border-2 border-slate-100 shadow-sm">
+                            <span class="text-xs font-bold text-indigo-500 uppercase tracking-widest">${question.term}</span>
+                            <h3 class="text-xl font-bold mt-2 leading-snug">${question.question}</h3>
+                        </div>
+
+                        <div class="flex flex-col gap-3">
+                            ${question.choices.map((choice, i) => {
+                                const letter = ['A', 'B', 'C', 'D'][i];
+                                return `
+                                    <button onclick="app.submitAnswer('${letter}')" class="w-full text-left p-5 rounded-2xl border-2 border-slate-100 bg-white hover:border-indigo-300 active:bg-indigo-50 transition flex items-center gap-4 group">
+                                        <span class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-sm group-hover:bg-indigo-600 group-hover:text-white transition">${letter}</span>
+                                        <span class="font-medium">${choice}</span>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            submitAnswer(letter) {
+                const correct = this.testData[this.testIndex].correctAnswer;
+                const isCorrect = letter === correct;
+                
+                if (isCorrect) this.testScore++;
+                
+                this.testResults.push({
+                    question: this.testData[this.testIndex],
+                    userAnswer: letter,
+                    isCorrect: isCorrect
+                });
+
+                // Immediate feedback overlay or just move on? Let's show a brief result
+                const feedbackColor = isCorrect ? 'bg-green-500' : 'bg-red-500';
+                const feedbackText = isCorrect ? 'Correct!' : 'Incorrect';
+                
+                this.container.innerHTML += `
+                    <div class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+                        <div class="${feedbackColor} text-white px-8 py-4 rounded-full font-bold text-2xl shadow-2xl animate-bounce">
+                            ${feedbackText}
+                        </div>
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    this.testIndex++;
+                    if (this.testIndex < this.testData.length) {
+                        this.renderTestQuestion();
+                    } else {
+                        this.renderResults();
+                    }
+                }, 800);
+            }
+
+            renderResults() {
+                const percentage = Math.round((this.testScore / this.testData.length) * 100);
+                this.container.innerHTML = `
+                    <div class="flex flex-col gap-6 animate-fade pb-10">
+                        <div class="text-center p-8 bg-white rounded-3xl border-2 border-slate-100 shadow-sm">
+                            <h2 class="text-3xl font-black text-slate-800">Test Complete!</h2>
+                            <div class="mt-4 text-5xl font-black text-indigo-600">${percentage}%</div>
+                            <p class="text-slate-500 mt-2">You got ${this.testScore} out of ${this.testData.length} correct.</p>
+                        </div>
+
+                        <h4 class="font-bold text-slate-800 px-2">Review Missed Questions</h4>
+                        <div class="flex flex-col gap-4">
+                            ${this.testResults.filter(r => !r.isCorrect).map(res => `
+                                <div class="bg-red-50 border border-red-100 p-4 rounded-2xl">
+                                    <p class="text-sm font-bold text-red-700">${res.question.term}</p>
+                                    <p class="text-slate-800 font-medium mb-2">${res.question.question}</p>
+                                    <div class="flex gap-4 text-xs font-bold uppercase">
+                                        <span class="text-red-500">Your choice: ${res.userAnswer}</span>
+                                        <span class="text-green-600">Correct: ${res.question.correctAnswer}</span>
+                                    </div>
+                                </div>
+                            `).join('') || '<p class="text-center text-slate-400 py-10 italic">Perfect score! No mistakes to review.</p>'}
+                        </div>
+
+                        <button onclick="app.startTest()" class="bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg mt-4">Retake Test</button>
+                        <button onclick="app.setView('study')" class="bg-white border border-slate-200 text-slate-600 py-4 rounded-2xl font-bold">Back to Study</button>
+                    </div>
+                `;
+            }
+
+            resetProgress() {
+                if (confirm('Clear all mastery data and reset progress?')) {
+                    this.mastered = [];
+                    localStorage.removeItem('math_mastered');
+                    this.setView('study');
+                }
+            }
+        }
+
+        const app = new MathApp();
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js').catch(err => console.log("SW registration failed", err));
+            });
+        }
+    </script>
+</body>
+</html>
